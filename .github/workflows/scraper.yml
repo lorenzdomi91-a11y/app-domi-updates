@@ -1,0 +1,54 @@
+name: Scraper offerte
+
+# Legge i canali Telegram e pubblica offerte.json nel branch "data".
+# L'app VENATOR scarica solo quel file invece di leggere 12 canali da ogni telefono.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scraper
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compila lo scraper
+        working-directory: scraper
+        run: |
+          chmod +x gradlew
+          ./gradlew :scraper:installDist --no-configuration-cache -q
+
+      - name: Recupera il feed precedente
+        run: |
+          mkdir -p out
+          git fetch --depth 1 origin data 2>/dev/null && git show origin/data:offerte.json > out/offerte.json || echo "Nessun feed precedente"
+
+      - name: Leggi i canali
+        run: scraper/scraper/build/install/scraper/bin/scraper out/offerte.json channels.txt
+
+      - name: Pubblica offerte.json nel branch data
+        run: |
+          cd out
+          test -s offerte.json || { echo "Feed vuoto, niente da pubblicare"; exit 0; }
+          git init -q -b data
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add offerte.json
+          git commit -qm "Offerte $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data

@@ -1,0 +1,14 @@
+# Canali Telegram letti dallo scraper (uno per riga, senza @).
+# Puoi modificare questo file anche dal telefono su github.com: vale dal giro successivo.
+scontiamolo
+meritasconti
+offertepuntotech
+offertepuntocasa
+offertepuntomoda
+prezzialribasso
+offerteogniora
+offertedale
+GM_ErroriDiPrezzo_SuperAffari
+GosuMania_Tech
+GosuMania_Casa
+GosuMania_Moda
