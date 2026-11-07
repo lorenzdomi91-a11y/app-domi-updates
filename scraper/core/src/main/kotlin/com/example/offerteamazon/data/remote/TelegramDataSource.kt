@@ -271,7 +271,7 @@ class TelegramDataSource {
             // 7. Computer & Notebook
             t.hasAny("laptop", "notebook", "macbook", "monitor pc", "monitor 4k", "monitor gaming", "scheda madre",
                 "scheda video", "intel core", "ryzen", "tastiera mecc", "mouse pc", "ssd", "hard disk",
-                "stampante", "router", "modem", "mini pc", "pc fisso", "memoria ram", "chiavetta usb") ||
+                "stampante", "cartucce", "toner", "webcam", "microfono", "router", "modem", "mini pc", "pc fisso", "memoria ram", "chiavetta usb") ||
                 t.hasAnyWord("rtx", "gtx", "monitor") -> Categories.PC
 
             // 8. Gaming & Console
@@ -283,13 +283,15 @@ class TelegramDataSource {
             t.hasAny("aspirapolvere", "friggitrice", "air fryer", "dreame", "roborock", "dyson", "cucina",
                 "caffè", "caffe", "delonghi", "de'longhi", "nespresso", "detersivo", "fairy", "pampers",
                 "spazzolone", "pentola", "padella", "materasso", "cuscino", "lampada", "striscia led",
-                "scopa elettrica", "forno", "microonde", "lavatrice", "lavastoviglie") ||
+                "scopa elettrica", "forno", "microonde", "lavatrice", "lavastoviglie", "ammorbidente",
+                "sottovuoto", "girafrittata", "tegame", "bicchieri", "piatti", "asciugamani", "lenzuola") ||
                 t.hasWord("finish") -> Categories.HOME
 
             // 10. Beauty & Salute
             t.hasAny("spazzolino", "oral-b", "rasoio", "braun", "oneblade", "piastra capelli", "asciugacapelli",
                 "profumo", "crema viso", "shampoo", "bagnoschiuma", "epilatore", "regolabarba", "integratori",
-                "misuratore pressione", "saturimetro") ||
+                "misuratore pressione", "saturimetro", "deodorante", "magnesio", "vitamina",
+                "integratore", "proteine", "dentifricio", "collutorio", "crema solare") ||
                 t.hasWord("phon") -> Categories.BEAUTY
 
             // 11. Auto, Bricolage & Fai da Te
