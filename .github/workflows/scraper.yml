@@ -4,7 +4,7 @@ name: Scraper offerte
 # L'app VENATOR scarica solo quel file invece di leggere 12 canali da ogni telefono.
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
 
 permissions:
