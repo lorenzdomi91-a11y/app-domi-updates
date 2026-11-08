@@ -1,4 +1,4 @@
-name: Scraper offerte
+name: Scraper offerte.
 
 # Legge i canali Telegram e pubblica offerte.json nel branch "data".
 # L'app VENATOR scarica solo quel file invece di leggere 12 canali da ogni telefono.
