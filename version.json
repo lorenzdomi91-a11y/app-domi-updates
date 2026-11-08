@@ -1,7 +1,7 @@
 {
-  "versionCode": 5,
-  "versionName": "2.1.0",
+  "versionCode": 6,
+  "versionName": "2.1.1",
   "apkUrl": "https://raw.githubusercontent.com/lorenzdomi91-a11y/app-domi-updates/apk/VENATOR.apk",
-  "releaseNotes": "• Prezzi sopra i 1000€ corretti\n• Offerte più veloci e meno consumo di batteria\n• Ordina, cerca e nascondi le offerte scadute\n• Avvisi per parola chiave e per prezzo sui preferiti\n• Nuova icona\n\nSe l'installazione non riesce, disinstalla prima la versione precedente.",
+  "releaseNotes": "• Prezzi sopra i 1000€ corretti\n• Offerte più veloci e meno consumo di batteria\n• Ordina, cerca e nascondi le offerte scadute\n• Avvisi per parola chiave e per prezzo sui preferiti\n• Nuova icona, anche nelle notifiche\n\nSe l'installazione non riesce, disinstalla prima la versione precedente.",
   "forceUpdate": false
 }
