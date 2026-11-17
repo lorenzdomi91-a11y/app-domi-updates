@@ -10,6 +10,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import kotlin.math.roundToInt
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
 import java.net.HttpURLConnection
@@ -97,8 +98,13 @@ class TelegramDataSource {
         // per riconoscere la riga del titolo.
         val fullText = textWithLineBreaks(textElement)
 
-        // Extract links
-        val links = mutableSetOf<String>()
+        // Post "riassunto" con più prodotti numerati (1) ... 2) ...): si usa solo il primo,
+        // altrimenti prezzi di prodotti diversi venivano mescolati (es. 45,99€ "invece di" 999€).
+        val firstItem = firstRoundupItem(textElement, fullText)
+
+        // Extract links (prima quelli del primo prodotto, se è un riassunto)
+        val links = linkedSetOf<String>()
+        firstItem?.select("a[href]")?.forEach { links.add(it.attr("href")) }
         textElement.select("a[href]").forEach { links.add(it.attr("href")) }
         message.select(".tgme_widget_message_inline_button").forEach { links.add(it.attr("href")) }
         
@@ -131,14 +137,15 @@ class TelegramDataSource {
             ?: message.select("a.tgme_widget_message_date").attr("href").takeIf { it.isNotEmpty() }
         val offerId = asin ?: postId ?: "${channelName}_${fullText.hashCode()}"
 
-        val priceData = extractSemanticPrice(textElement)
+        val priceData = extractSemanticPrice(firstItem ?: textElement)
         
         var imageUrl = extractImageUrl(message)
         if ((imageUrl.isEmpty()) && (asin != null)) {
             imageUrl = "https://m.media-amazon.com/images/P/$asin.01.jpg"
         }
 
-        val title = extractProductTitle(textElement, fullText)
+        val title = firstItem?.let { roundupTitle(textWithLineBreaks(it)) }
+            ?: extractProductTitle(textElement, fullText)
 
         val category = extractAdvancedCategory(title, fullText)
         val score = calculateDealScore(priceData.percentage, category, fullText)
@@ -271,27 +278,44 @@ class TelegramDataSource {
             // 7. Computer & Notebook
             t.hasAny("laptop", "notebook", "macbook", "monitor pc", "monitor 4k", "monitor gaming", "scheda madre",
                 "scheda video", "intel core", "ryzen", "tastiera mecc", "mouse pc", "ssd", "hard disk",
-                "stampante", "cartucce", "toner", "webcam", "microfono", "router", "modem", "mini pc", "pc fisso", "memoria ram", "chiavetta usb") ||
-                t.hasAnyWord("rtx", "gtx", "monitor") -> Categories.PC
+                "stampante", "cartucce", "toner", "webcam", "microfono", "router", "case pc", "case atx",
+                "case microatx", "case mesh", "mouse gaming", "mouse wireless", "tastiera", "hub usb", "docking",
+                "alimentatore pc", "processore", "nasync", "multipack", "modem", "mini pc", "pc fisso", "memoria ram", "chiavetta usb") ||
+                t.hasAnyWord("rtx", "gtx", "monitor", "mouse", "nas") -> Categories.PC
 
             // 8. Gaming & Console
             t.hasAny("playstation", "ps5", "ps4", "xbox", "nintendo", "funko", "giochi da tavolo", "joystick",
                 "dualsense", "controller xbox", "sedia gaming") ||
                 t.hasAnyWord("switch", "lego") -> Categories.GAMING
 
+            // 9a. Alimentari & Animali (prima di Casa: "capsule caffè" è spesa, la macchina è casa)
+            !t.hasAny("macchina", "macchinetta", "tritacaffè", "macinacaffè", "integrator", "magnesio",
+                "vitamin", "compresse", "spazzolino") && (
+                t.hasAny("cibo per", "crocchette", "lettiera", "per gatti", "per cani", "snack", "barrette",
+                    "biscotti", "cioccolat", "capsule", "cialde", "caffè in grani", "caffè macinato", "tonno",
+                    "pasta ", "olio extra", "whisky", "vino ", "birra", "liquore", "amaro ", "lattine",
+                    "bottiglie", "acqua minerale", "tisana", "chewing gum", "caramelle", "cereali", "merendine",
+                    "nutella", "patatine", "chips", "energy drink", "red bull", "monster energy", "high protein") ||
+                    t.hasAnyWord("gin", "rum", "gatto", "gatti", "cane", "cani")
+                ) -> Categories.FOOD
+
             // 9. Elettrodomestici & Casa
             t.hasAny("aspirapolvere", "friggitrice", "air fryer", "dreame", "roborock", "dyson", "cucina",
                 "caffè", "caffe", "delonghi", "de'longhi", "nespresso", "detersivo", "fairy", "pampers",
                 "spazzolone", "pentola", "padella", "materasso", "cuscino", "lampada", "striscia led",
                 "scopa elettrica", "forno", "microonde", "lavatrice", "lavastoviglie", "ammorbidente",
-                "sottovuoto", "girafrittata", "tegame", "bicchieri", "piatti", "asciugamani", "lenzuola") ||
+                "sottovuoto", "girafrittata", "tegame", "bicchieri", "piatti", "asciugamani", "lenzuola",
+                "levapelucchi", "sedile wc", "bowl", "contenitor", "carrello", "telecamera", "telecamere",
+                "videocamera sorveglianza", "videocitofono", "ciotola", "stendibiancheria", "ferro da stiro") ||
                 t.hasWord("finish") -> Categories.HOME
 
             // 10. Beauty & Salute
             t.hasAny("spazzolino", "oral-b", "rasoio", "braun", "oneblade", "piastra capelli", "asciugacapelli",
                 "profumo", "crema viso", "shampoo", "bagnoschiuma", "epilatore", "regolabarba", "integratori",
                 "misuratore pressione", "saturimetro", "deodorante", "magnesio", "vitamina",
-                "integratore", "proteine", "dentifricio", "collutorio", "crema solare") ||
+                "integratore", "proteine", "dentifricio", "collutorio", "crema solare", "spazzola per capelli",
+                "spazzola ad aria", "capelli", "contorno occhi", "siero", "gummies", "multivitamin", "skincare",
+                "make up", "mascara", "rossetto", "smalto") ||
                 t.hasWord("phon") -> Categories.BEAUTY
 
             // 11. Auto, Bricolage & Fai da Te
@@ -303,7 +327,9 @@ class TelegramDataSource {
             // 12. Abbigliamento & Scarpe
             t.hasAny("scarpe", "sneakers", "nike", "adidas", "geox", "stivali", "ciabatte", "maglietta",
                 "t-shirt", "pantaloni", "giacca", "felpa", "zaino", "trolley", "valigia", "orologio da polso",
-                "jeans", "intimo") ||
+                "jeans", "intimo", "sneaker", "sandali", "maglione", "in pile", "camicia", "giubbotto",
+                "piumino", "calzini", "cintura", "portafoglio", "borsa", "anello", "collana", "bracciale",
+                "orecchini", "occhiali da sole", "skechers", "columbia", "swarovski", "the north face") ||
                 t.hasWord("puma") -> Categories.FASHION
 
             else -> Categories.GENERIC
@@ -419,7 +445,7 @@ class TelegramDataSource {
         var percentage: Int? = null
         if (originalCandidate != null && originalCandidate.value > 0.0) {
             percentage = (((originalCandidate.value - winner.value) / originalCandidate.value) * 100)
-                .toInt().coerceIn(1, 99)
+                .roundToInt().coerceIn(1, 99)
         }
         if (percentage == null) percentage = extractPercentage(text)
 
@@ -479,6 +505,13 @@ class TelegramDataSource {
     }
 
     private fun extractProductTitle(textElement: Element, fullText: String): String {
+        // 0. Riga marcata come prodotto (es. GosuMania: "🛍Tineco Floor One i5 ..."), che viene
+        //    dopo un'intestazione tipo "OFFERTA + CODICE".
+        fullText.lines().map { it.trim() }.firstOrNull { line -> PRODUCT_LINE_MARKERS.any { line.startsWith(it) } }
+            ?.let { cleanAndExtractTitle(it) }
+            ?.takeIf { it.length >= 6 && !isPromoBadge(it) }
+            ?.let { return it }
+
         // 1. Try finding a valid bold/strong element that is NOT a promotional badge
         val boldElements = textElement.select("b, strong")
         for (b in boldElements) {
@@ -507,6 +540,21 @@ class TelegramDataSource {
         return "Offerta Amazon"
     }
 
+    /** Primo prodotto di un post riassunto, oppure null se il post parla di un solo prodotto. */
+    private fun firstRoundupItem(textElement: Element, fullText: String): Element? {
+        if (!ROUNDUP_FIRST_ITEM.containsMatchIn(fullText) || !ROUNDUP_SECOND_ITEM.containsMatchIn(fullText)) return null
+        if (PriceParser.findPrices(fullText).size < 3) return null
+        val html = textElement.html()
+        val cut = ROUNDUP_SECOND_ITEM_HTML.find(html)?.range?.first ?: return null
+        return Jsoup.parseBodyFragment(html.substring(0, cut)).body()
+    }
+
+    private fun roundupTitle(firstItemText: String): String? =
+        firstItemText.lines()
+            .firstNotNullOfOrNull { ROUNDUP_FIRST_ITEM_LINE.find(it.trim())?.groupValues?.get(1) }
+            ?.let { cleanAndExtractTitle(it) }
+            ?.takeIf { it.length >= 6 }
+
     private fun isPromoBadge(text: String): Boolean {
         val clean = text.lowercase()
             .replace(Regex("[^a-z0-9àèéìòù ]"), " ")
@@ -523,7 +571,11 @@ class TelegramDataSource {
             "promo", "promozione", "affare", "super affare", "scontato", "ribasso",
             "prezzi al ribasso", "prezzo al ribasso", "scontiamolo", "meritasconti",
             "offertepuntotech", "offertepuntocasa", "offertepuntomoda", "gosumania",
-            "prezzialribasso", "offerteogniora", "offertedale"
+            "prezzialribasso", "offerteogniora", "offertedale",
+            "codice", "codici", "lampo", "prime", "esclusiva", "link", "prodotto", "acquista", "qui",
+            "migliori", "oggi", "offerte", "tech", "casa", "moda",
+            // nomi di negozi: "🛍 Amazon" indica dove comprare, non il prodotto
+            "amazon", "amazon it", "it", "warehouse", "ebay", "mediaworld", "unieuro"
         )
 
         if (clean in promoWords) return true
@@ -547,14 +599,14 @@ class TelegramDataSource {
         text = text.replace(PriceParser.PRICE_REGEX, "")
 
         // 3. Remove leading emojis and symbols
-        text = text.replace(Regex("^[\\s\\p{So}\\p{Cn}\\p{Cs}🔥💣⚡🚨💎✅🎉🏷️❗‼🚀📉⭐💥🏆🎁📌👉👈►•\\-–—:*#]+"), "").trim()
+        text = text.replace(Regex("^[+\\s\\p{So}\\p{Sk}\\p{Cn}\\p{Cs}🔥💣⚡🚨💎✅🎉🏷️❗‼🚀📉⭐💥🏆🎁📌👉👈►•\\-–—:*#]+"), "").trim()
 
         // 4. Remove leading promotional prefix phrases
-        val leadingPromoRegex = Regex("(?i)^(?:(?:minimo storico|sconto bomba|prezzo bomba|prezzi al ribasso|prezzo al ribasso|errore (?:di )?prezzo|prezzo errato|super offerta|offerta lampo|sconto shock|codice sconto|coupon|super sconto|super|bomba|shock|incredibile|scontissimo|offerta|prezzo crollato)[!.:;\\-\\s]*)+")
+        val leadingPromoRegex = Regex("(?i)^(?:(?:minimo storico|sconto bomba|prezzo bomba|prezzi al ribasso|prezzo al ribasso|errore (?:di )?prezzo|prezzo errato|super offerta|offerta lampo|sconto shock|codice sconto|coupon|super sconto|super|bomba|shock|incredibile|scontissimo|offerta|prezzo crollato|codice|\\+)[!.:;\\-\\s]*)+")
         text = text.replace(leadingPromoRegex, "").trim()
 
         // 5. Remove trailing emojis and clutter
-        text = text.replace(Regex("[\\s\\p{So}\\p{Cn}\\p{Cs}🔥💣⚡🚨💎✅🎉🏷️❗‼🚀📉⭐💥🏆🎁📌👉👈►•\\-–—:*#]+$"), "").trim()
+        text = text.replace(Regex("[\\s[\\p{So}&&[^°]]\\p{Sk}\\p{Cn}\\p{Cs}🔥💣⚡🚨💎✅🎉🏷️❗‼🚀📉⭐💥🏆🎁📌👉👈►•\\-–—:*#]+$"), "").trim()
 
         // 6. Cleanup extra spaces
         text = text.replace(Regex("\\s+"), " ").trim()
@@ -618,7 +670,7 @@ class TelegramDataSource {
             """(?:$WB(?:solo|soli|paghi|ora|adesso|prezzo|finale|scende a|crolla a|a)$WE|➡|👉|→)[^€\d]{0,15}$"""
         )
         val ORIGINAL_PRICE_HINT = Regex(
-            """$WB(?:listino|invece di|anziché|anziche|era|consigliato|prima|da)$WE[^€\d]{0,15}$"""
+            """$WB(?:listino|invece di|anziché|anziche|era|consigliato|prima|da|iniziale|precedente|pieno)$WE[^€\d]{0,15}$"""
         )
         val DISCOUNT_AMOUNT_HINT = Regex(
             """$WB(?:sconto|risparmi|risparmio|risparmia|coupon|buono)(?:\s+(?:di|da|del|extra))?\s*[:\-]?\s*$"""
@@ -627,6 +679,14 @@ class TelegramDataSource {
             """(?i)\b(?:a soli|anziché|invece di|prezzo|listino|ora a|da|a)\s*(?:""" + PriceParser.PRICE_REGEX.pattern + ")"
         )
         val COUPON_REGEX = Regex("""(?i:codice(?:\s+sconto)?|coupon|code|promo)\s*:?\s*([A-Z0-9][A-Z0-9-]{3,24})(?![\p{L}\d])""")
+        // Post riassunto: "1) prodotto" ... "2) prodotto" (anche 1. / 1️⃣)
+        val ROUNDUP_FIRST_ITEM = Regex("""(?m)^\s*(?:1[).]|1️⃣)\s*\S""")
+        val ROUNDUP_SECOND_ITEM = Regex("""(?m)^\s*(?:2[).]|2️⃣)\s*\S""")
+        val ROUNDUP_FIRST_ITEM_LINE = Regex("""^(?:1[).]|1️⃣)\s*(.+)$""")
+        val ROUNDUP_SECOND_ITEM_HTML = Regex("""<br\s*/?>\s*(?:<[^>]+>\s*)*(?:2[).]|2️⃣)""")
+
+        val PRODUCT_LINE_MARKERS = listOf("🛍", "🛒", "📦")
+
         val COUPON_STOP_WORDS = setOf("SCONTO", "COUPON", "CODICE", "PROMO", "AMAZON", "APPLICA", "OFFERTA")
     }
 }

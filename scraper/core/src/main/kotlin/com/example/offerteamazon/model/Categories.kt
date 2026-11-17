@@ -19,6 +19,7 @@ object Categories {
     const val BEAUTY = "BEAUTY & SALUTE"
     const val DIY = "AUTO & FAI DA TE"
     const val FASHION = "ABBIGLIAMENTO & SCARPE"
+    const val FOOD = "ALIMENTARI & ANIMALI"
     const val GENERIC = "OFFERTA"
 
     /** Riconduce nomi storici o alternativi (push FCM, versioni vecchie) al nome canonico. */
@@ -38,6 +39,7 @@ object Categories {
             c.contains("ABBIGLIAMENTO") || c.contains("MODA") || c.contains("SCARPE") -> FASHION
             c.contains("BEAUTY") || c.contains("SALUTE") || c.contains("CURA") -> BEAUTY
             c.contains("FAI DA TE") || c == "AUTO" -> DIY
+            c.contains("ALIMENTARI") || c.contains("ANIMALI") || c.contains("SPESA") -> FOOD
             else -> c
         }
     }

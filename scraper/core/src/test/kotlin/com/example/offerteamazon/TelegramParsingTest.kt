@@ -84,4 +84,52 @@ class TelegramParsingTest {
         assertEquals("239,00 €", decoded.offers.single().discountedPrice)
         assertEquals(a.title, decoded.offers.single().title)
     }
+
+    // --- Casi reali trovati nel feed del 17/11/2026 ---
+
+    @Test
+    fun roundupPostUsesOnlyFirstProduct() {
+        val o = parse(
+            """💻 Migliori offerte tech di oggi<br><br>1) 👉🏻 Blink videocamera esterna 2K+ con proiettore<br>💶 45,99€ invece di 114,97€<br>➡ <a href="https://www.amazon.it/dp/B0D1111AAA">ACQUISTA QUI</a><br><br>""" +
+                """2) 👉🏻 Dreame Matrix10 Pro robot aspirapolvere 30.000 Pa<br>💶 569,00€ invece di 999,00€<br>➡ <a href="https://www.amazon.it/dp/B0D2222BBB">ACQUISTA QUI</a><br><br>""" +
+                """3) 👉🏻 Beats Studio Buds+ auricolari true wireless<br>💶 89,00€ invece di 174,05€<br>➡ <a href="https://www.amazon.it/dp/B0D3333CCC">ACQUISTA QUI</a>"""
+        )
+        assertEquals("Blink videocamera esterna 2K+ con proiettore", o.title)
+        assertEquals("45,99 €", o.discountedPrice)
+        assertEquals("114,97 €", o.originalPrice)
+        assertEquals(60, o.discountPercentage)
+        assertEquals("B0D1111AAA", o.id)
+    }
+
+    @Test
+    fun gosuManiaHeaderIsNotTheTitle() {
+        val o = parse(
+            """<b>OFFERTA + CODICE</b><br><br>🛍Tineco Floor One i5 Stretch Aspirapolvere Lavatrice, 20.000Pa, Piatto a 180°<br>💰Prezzo iniziale: 169,00 €<br>💰Prezzo finale: 140,99 €<br>👾Codice Sconto: DOTINECO<br>🔗<a href="https://www.amazon.it/dp/B0D4444DDD">Link Prodotto</a>🔗"""
+        )
+        assertEquals("Tineco Floor One i5 Stretch Aspirapolvere Lavatrice, 20.000Pa, Piatto a 180°", o.title)
+        assertEquals("140,99 €", o.discountedPrice)
+        assertEquals("169,00 €", o.originalPrice)
+        assertEquals("DOTINECO", o.couponCode)
+        assertEquals(Categories.HOME, o.category)
+    }
+
+    @Test
+    fun newCategories() {
+        fun cat(title: String) = parse("""$title<br>a 9,99€<br><a href="https://www.amazon.it/dp/B0D5555EEE">link</a>""").category
+        assertEquals(Categories.FOOD, cat("by Amazon - Cibo per Gatti - 3Kg."))
+        assertEquals(Categories.FOOD, cat("Gimoka Espresso Intenso 70 capsule compatibili A Modo Mio"))
+        assertEquals(Categories.FOOD, cat("Lagavulin 16 Anni Scotch Single Malt Whisky con Astuccio"))
+        assertEquals(Categories.PC, cat("CHERRY XTRFY M68 Wireless, Mouse Gaming Senza Fili"))
+        assertEquals(Categories.FASHION, cat("Skechers Uno Golden Air Sneaker da Donna"))
+        assertEquals(Categories.BEAUTY, cat("Tangle Teezer - Spazzola per Capelli"))
+        assertEquals(Categories.BEAUTY, cat("Magnesio e Potassio 60 capsule integratore"))
+        assertEquals(Categories.HOME, cat("De'Longhi macchina caffè con capsule"))
+    }
+
+    @Test
+    fun sameShortLinkIsOneOffer() {
+        val a = parse("""Prodotto misterioso<br>a 19,99€<br><a href="https://amzn.to/46fPopi">link</a>""")
+        val b = a.copy(id = "altro_post", timestamp = a.timestamp + 1)
+        assertEquals(1, OfferDedup.deduplicate(listOf(a, b)).size)
+    }
 }

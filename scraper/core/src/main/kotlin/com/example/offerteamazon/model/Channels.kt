@@ -42,7 +42,11 @@ object OfferDedup {
      */
     fun key(offer: Offer): String {
         val asin = asinOf(offer.amazonUrl) ?: offer.id.takeIf { it.length == 10 && asinLike.matches(it) }
-        return if (asin != null) "ASIN_$asin" else "ID_${offer.id}"
+        if (asin != null) return "ASIN_$asin"
+        // Link corto non risolto (amzn.to/...): lo stesso link in due post è lo stesso prodotto.
+        val url = offer.amazonUrl.lowercase()
+        if (url.contains("amzn.to/") || url.contains("amzn.eu/")) return "URL_" + url.substringBefore('?').trimEnd('/')
+        return "ID_${offer.id}"
     }
 
     /** A parità di prodotto vince il post più recente (un prezzo vecchio può essere scaduto). */
