@@ -139,10 +139,8 @@ class TelegramDataSource {
 
         val priceData = extractSemanticPrice(firstItem ?: textElement)
         
-        var imageUrl = extractImageUrl(message)
-        if ((imageUrl.isEmpty()) && (asin != null)) {
-            imageUrl = "https://m.media-amazon.com/images/P/$asin.01.jpg"
-        }
+        // Solo la foto del post; la foto Amazon dall'ASIN la sceglie l'app (ProductImages).
+        val imageUrl = extractImageUrl(message)
 
         val title = firstItem?.let { roundupTitle(textWithLineBreaks(it)) }
             ?: extractProductTitle(textElement, fullText)
@@ -295,7 +293,9 @@ class TelegramDataSource {
                     "biscotti", "cioccolat", "capsule", "cialde", "caffè in grani", "caffè macinato", "tonno",
                     "pasta ", "olio extra", "whisky", "vino ", "birra", "liquore", "amaro ", "lattine",
                     "bottiglie", "acqua minerale", "tisana", "chewing gum", "caramelle", "cereali", "merendine",
-                    "nutella", "patatine", "chips", "energy drink", "red bull", "monster energy", "high protein") ||
+                    "nutella", "patatine", "chips", "energy drink", "red bull", "monster energy", "high protein",
+                    "fagioli", "legumi", "infuso", "rooibos", "plasmon", "latte in polvere", "biscotto", "puppy",
+                    "cuccioli", "umido per", "per cane", "per gatto") ||
                     t.hasAnyWord("gin", "rum", "gatto", "gatti", "cane", "cani")
                 ) -> Categories.FOOD
 
@@ -476,16 +476,16 @@ class TelegramDataSource {
             val url = """url\(['"]?(.*?)['"]?\)""".toRegex().find(style)?.groupValues?.get(1)
             if (!url.isNullOrEmpty()) return if (url.startsWith("//")) "https:$url" else url
         }
-        // Fallback 1: try finding any image tag
-        message.select("img").forEach { 
-            val src = it.attr("src")
-            if (src.isNotEmpty() && !src.contains("blank.gif")) {
-                return if (src.startsWith("//")) "https:$src" else src
-            }
+        // Fallback: altre immagini del post, ma MAI la foto del canale (avatar), le emoji
+        // o le immagini incorporate "data:" (diventavano il carrello nero nella lista).
+        val candidates = message.select("img[src], [data-src]").filter { el ->
+            el.parents().none { p -> p.hasClass("tgme_widget_message_user_photo") || p.hasClass("emoji") } &&
+                !el.hasClass("tgme_widget_message_user_photo") && !el.hasClass("emoji")
         }
-        // Fallback 2: data-src
-        message.select("[data-src]").firstOrNull()?.attr("data-src")?.let {
-            if (it.isNotEmpty()) return if (it.startsWith("//")) "https:$it" else it
+        for (el in candidates) {
+            val src = el.attr("src").ifEmpty { el.attr("data-src") }
+            if (src.isEmpty() || src.startsWith("data:") || src.contains("blank.gif") || src.contains("emoji")) continue
+            return if (src.startsWith("//")) "https:$src" else src
         }
         return ""
     }

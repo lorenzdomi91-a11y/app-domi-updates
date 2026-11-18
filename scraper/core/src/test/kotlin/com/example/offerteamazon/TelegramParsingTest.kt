@@ -132,4 +132,19 @@ class TelegramParsingTest {
         val b = a.copy(id = "altro_post", timestamp = a.timestamp + 1)
         assertEquals(1, OfferDedup.deduplicate(listOf(a, b)).size)
     }
+
+    @Test
+    fun channelAvatarIsNeverTheProductImage() {
+        val element = Jsoup.parse(
+            """<div class="tgme_widget_message" data-post="chan/2">
+            <a class="tgme_widget_message_user_photo"><img src="https://cdn4.telesco.pe/file/avatar.jpg"></a>
+            <div class="tgme_widget_message_text">Cuffie Sony WH-1000XM5<br>a 249€ invece di 399€<br><a href="https://www.amazon.it/dp/B0B1111111">link</a></div>
+            <time datetime="2026-11-17T05:00:00+00:00"></time></div>"""
+        ).selectFirst(".tgme_widget_message")!!
+        val o = processMessage.invoke(dataSource, element, "testchan") as Offer
+        assertEquals("", o.imageUrl)
+        // Nessuna foto nel post: resta la foto Amazon dall'ASIN
+        assertEquals(listOf("https://m.media-amazon.com/images/P/B0B1111111.01._SCLZZZZZZZ_SX500_.jpg"),
+            com.example.offerteamazon.model.ProductImages.candidates(o))
+    }
 }
