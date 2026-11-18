@@ -44,3 +44,28 @@ class PriceParserTest {
         assertEquals("9,90 €", PriceParser.format(9.9))
     }
 }
+
+class AmazonPageImageTest {
+    private val extract = com.example.offerteamazon.model.AmazonPageImage::extract
+
+    @Test
+    fun mobilePageMainImageNotTheFirstHires() {
+        // Caso reale (17/11/2026): il primo data-a-hires della pagina NON è il prodotto
+        val html = "x".repeat(30000) +
+            """<img data-a-hires="https://m.media-amazon.com/images/I/41mtVUwiDmL.jpg" src="logo.png">""" +
+            """<img alt="" id="main-image" data-a-image-name="mainImage" data-a-hires="https://m.media-amazon.com/images/I/71pHpw6vhhL._AC_UF1000,1000_QL80_.jpg" fetchpriority="high"/>"""
+        assertEquals("https://m.media-amazon.com/images/I/71pHpw6vhhL._AC_UF1000,1000_QL80_.jpg", extract(html))
+    }
+
+    @Test
+    fun desktopPage() {
+        val html = "y".repeat(30000) +
+            """<img alt="Prodotto" src="https://m.media-amazon.com/images/I/71Z2xH-KOjL._AC_SX342_.jpg" data-old-hires="https://m.media-amazon.com/images/I/71Z2xH-KOjL._AC_SL1500_.jpg" id="landingImage">"""
+        assertEquals("https://m.media-amazon.com/images/I/71Z2xH-KOjL._AC_SL1500_.jpg", extract(html))
+    }
+
+    @Test
+    fun captchaPage() {
+        assertNull(extract("<html><form action=\"/errors/validateCaptcha\">captcha</form></html>"))
+    }
+}

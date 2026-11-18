@@ -1,7 +1,7 @@
 {
-  "versionCode": 8,
-  "versionName": "2.1.3",
+  "versionCode": 9,
+  "versionName": "2.1.4",
   "apkUrl": "https://raw.githubusercontent.com/lorenzdomi91-a11y/app-domi-updates/apk/VENATOR.apk",
-  "releaseNotes": "• Foto dei prodotti prese da Amazon (niente più loghi dei canali)\n• Prezzi e sconti corretti nei post con più prodotti\n• Nuova categoria Alimentari & Animali\n• Titoli più precisi e meno doppioni",
+  "releaseNotes": "• Foto dei prodotti più precise: presa dalla pagina Amazon quando serve\n• Loghi e mascotte dei canali non compaiono più come foto\n• Prezzi e sconti corretti nei post con più prodotti\n• Nuova categoria Alimentari & Animali",
   "forceUpdate": false
 }
