@@ -1,6 +1,6 @@
 # app-domi-updates
 
-File pubblici letti dall'app **VENATOR**.
+File pubblici letti dalle app **VENATOR** e **Duello**.
 
 | File | A cosa serve |
 |---|---|
@@ -11,6 +11,8 @@ File pubblici letti dall'app **VENATOR**.
 | branch `data` → `offerte.json` | Offerte raccolte dallo scraper ogni 15 minuti |
 | branch `apk` → `VENATOR.apk` | Ultimo APK per l'aggiornamento in-app |
 | `scraper/` | Scraper (copia da VENATOR, `tools/sync-scraper.sh`) |
+| `duello/version.json` | Avviso di aggiornamento di Duello |
+| branch `duello-apk` → `Duello.apk` | Ultimo APK di Duello per l'aggiornamento in-app |
 
 ## config.json
 
